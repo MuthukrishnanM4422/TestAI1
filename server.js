@@ -118,7 +118,7 @@ app.get('/api/health', (_req, res) => {
 
 // ── SPA fallback ──────────────────────────────────────────────
 app.get('*', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // ── Start ─────────────────────────────────────────────────────
