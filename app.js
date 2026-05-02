@@ -2,7 +2,6 @@
    BRD Test Case Generator — Enhanced app.js
    ═══════════════════════════════════════════════════════════════ */
 
-// ── Type meta-data ────────────────────────────────────────────
 const TYPE_META = {
   Positive:  { color: '#22d3a0', bg: 'rgba(34,211,160,.12)',  glow: 'rgba(34,211,160,.15)',  icon: '✓' },
   Negative:  { color: '#f05555', bg: 'rgba(240,85,85,.12)',   glow: 'rgba(240,85,85,.15)',   icon: '✗' },
@@ -18,25 +17,27 @@ const PRIORITY_META = {
 };
 
 // ── State ─────────────────────────────────────────────────────
-let allTestCases   = [];
-let allRequirements = [];
-let expandedIndex  = null;
-let editingCell    = null;   // { rowIdx, field }
+let allTestCases     = [];
+let allRequirements  = [];
+let expandedIndex    = null;
+let editingCell      = null;
 
 const enabledTypes = new Set(['Positive', 'Negative', 'Edge']);
 const typeCounts   = { Positive: 3, Negative: 3, Edge: 2, Boundary: 1, Security: 1 };
 
+// ── Smart API URL ─────────────────────────────────────────────
+const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'http://localhost:3000'
+  : '';
+
 // ── Boot ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   buildTypeGrid();
-
   const brdEl = document.getElementById('brdText');
   brdEl.addEventListener('input', () => {
-    document.getElementById('charCount').textContent =
-      brdEl.value.length.toLocaleString();
+    document.getElementById('charCount').textContent = brdEl.value.length.toLocaleString();
   });
 
-  // Drag-and-drop on upload zone
   const zone = document.getElementById('uploadZone');
   zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('has-file'); });
   zone.addEventListener('dragleave', () => zone.classList.remove('has-file'));
@@ -69,13 +70,16 @@ function buildTypeGrid() {
     card.style.setProperty('--card-bg',    meta.bg);
     card.style.setProperty('--card-glow',  meta.glow);
 
+    // Increase max to 50 for Positive/Negative, 30 for others
+    const maxVal = (type === 'Positive' || type === 'Negative') ? 50 : 30;
+
     card.innerHTML = `
       <div class="type-card-header">
         <span class="type-card-name">${meta.icon} ${type}</span>
         <span class="type-checkbox">${active ? '✓' : ''}</span>
       </div>
       <div class="type-count-row">
-        <input type="number" class="type-count-input" min="1" max="15"
+        <input type="number" class="type-count-input" min="1" max="${maxVal}"
                value="${typeCounts[type]}" id="cnt-${type}"
                onclick="event.stopPropagation()"
                onchange="typeCounts['${type}'] = +this.value" />
@@ -94,7 +98,6 @@ function toggleType(type) {
     enabledTypes.add(type);
   }
   const card = document.getElementById(`tc-${type}`);
-  const meta = TYPE_META[type];
   const active = enabledTypes.has(type);
   card.className = `type-card ${active ? 'active' : 'inactive'}`;
   card.querySelector('.type-checkbox').textContent = active ? '✓' : '';
@@ -155,13 +158,11 @@ async function extractDocxText(file) {
 function buildPrompt(brdText, model) {
   const activeTypes = [...enabledTypes];
   const typeLine = activeTypes.map(t => `${typeCounts[t]} ${t}`).join(', ');
-  const lang = document.getElementById('langSelect').value;
 
   return `You are a senior QA engineer. Analyze the Business Requirements Document (BRD) below and:
 
 1. Extract exactly 6–10 concise requirement statements (plain strings).
 2. Generate test cases: ${typeLine}.
-   Respond in: ${lang}
 
 Each test case object must have ALL of these fields:
 - id          : string — "TC-P01" (P=Positive), "TC-N01" (N=Negative), "TC-E01" (E=Edge), "TC-B01" (B=Boundary), "TC-S01" (S=Security). Auto-increment per type.
@@ -248,17 +249,16 @@ async function generateTestCases() {
   allTestCases    = [];
   allRequirements = [];
 
-  const model       = document.getElementById('modelSelect').value;
-  const temperature = parseFloat(document.getElementById('tempRange').value) / 10;
-  const prompt      = buildPrompt(brdText, model);
+  const model  = document.getElementById('modelSelect').value;
+  const prompt = buildPrompt(brdText, model);
 
   try {
-    const res = await fetch('/api/generate', {
+    const res = await fetch(`${API_BASE}/api/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model,
-        temperature,
+        temperature: 0.3,          // fixed optimal temperature
         messages: [{ role: 'user', content: prompt }],
       }),
     });
@@ -271,7 +271,6 @@ async function generateTestCases() {
     const data    = await res.json();
     const rawText = data.choices[0].message.content;
 
-    // Robustly extract JSON (handle possible markdown fences)
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('Model returned unexpected format. Try again.');
 
@@ -282,7 +281,6 @@ async function generateTestCases() {
     finishProgress();
     renderResults();
     setTimeout(() => switchTab('results'), 400);
-
   } catch (err) {
     finishProgress();
     showError('Generation failed: ' + err.message);
@@ -311,11 +309,8 @@ function renderResults() {
   document.getElementById('resultsContent').style.display = hasResults ? ''     : 'none';
   if (!hasResults) return;
 
-  // Tab badge
-  const badge = document.getElementById('resultsBadge');
-  badge.textContent = allTestCases.length;
-  badge.style.display = '';
-
+  document.getElementById('resultsBadge').textContent = allTestCases.length;
+  document.getElementById('resultsBadge').style.display = '';
   renderStats();
   renderRequirements();
   applyFilters();
@@ -346,7 +341,6 @@ function renderRequirements() {
   const card  = document.getElementById('reqsCard');
   const chips = document.getElementById('reqsChips');
   if (!allRequirements.length) { card.style.display = 'none'; return; }
-
   card.style.display = '';
   chips.innerHTML = allRequirements
     .map(r => `<span class="req-chip">${escapeHtml(r)}</span>`)
@@ -359,7 +353,7 @@ function applyFilters() {
   const fType   = document.getElementById('filterType').value;
   const fPrio   = document.getElementById('filterPriority').value;
 
-  const filtered = allTestCases.filter((tc, originalIdx) => {
+  const filtered = allTestCases.filter(tc => {
     if (fType !== 'All' && tc.type !== fType) return false;
     if (fPrio !== 'All' && tc.priority !== fPrio) return false;
     if (q) {
@@ -372,7 +366,6 @@ function applyFilters() {
 
   document.getElementById('filterCount').textContent =
     `${filtered.length} / ${allTestCases.length} shown`;
-
   renderTable(filtered);
 }
 
@@ -522,8 +515,8 @@ function exportMarkdown() {
 
 function downloadBlob(content, mime, filename) {
   const blob = new Blob([content], { type: mime });
-  const a    = document.createElement('a');
-  a.href     = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
   a.download = filename;
   a.click();
   URL.revokeObjectURL(a.href);
