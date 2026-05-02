@@ -1,23 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BRD Test Case Generator</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 </head>
 <body>
-
-  <!-- Background grid -->
   <div class="bg-grid"></div>
-
   <div class="app-wrapper">
-
-    <!-- ── HEADER ── -->
+    <!-- HEADER -->
     <header class="site-header">
       <div class="header-badge">QA SUITE v2.0</div>
       <h1 class="site-title">
@@ -26,7 +22,7 @@
       <p class="site-sub">AI-powered test case generation from Business Requirements</p>
     </header>
 
-    <!-- ── TABS ── -->
+    <!-- TABS -->
     <nav class="tab-nav">
       <button class="tab-btn active" data-tab="input" onclick="switchTab('input')">
         <span class="tab-icon">⌨</span> Input &amp; Config
@@ -37,20 +33,17 @@
       </button>
     </nav>
 
-    <!-- ══════════ INPUT TAB ══════════ -->
+    <!-- INPUT TAB -->
     <div id="tab-input" class="tab-pane active">
-
       <!-- Upload Card -->
       <div class="card">
         <div class="card-label">📁 Upload BRD Document</div>
         <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
           <div class="upload-icon">⬆</div>
-          <div class="upload-text">
-            <strong>Drop or click</strong> to upload .txt, .pdf, or .docx
-          </div>
+          <div class="upload-text"><strong>Drop or click</strong> to upload .txt, .pdf, or .docx</div>
           <div class="upload-sub" id="fileName">Supported formats: .txt · .pdf · .docx</div>
         </div>
-        <input type="file" id="fileInput" accept=".txt,.pdf,.docx" style="display:none" onchange="handleFileUpload(event)" />
+        <input type="file" id="fileInput" accept=".txt,.pdf,.docx" style="display:none" onchange="handleFileUpload(event)">
 
         <div class="card-label" style="margin-top:20px">✏ Or paste BRD content directly</div>
         <textarea id="brdText" class="brd-textarea"
@@ -71,9 +64,9 @@ REQ-003: Users shall be able to reset their password via email link..."></textar
         </div>
       </div>
 
-      <!-- Options Card -->
+      <!-- Options Card (model only) -->
       <div class="card options-card">
-        <div class="card-label">🎛 Advanced Options</div>
+        <div class="card-label">🎛 Model Selection</div>
         <div class="options-row">
           <div class="option-item">
             <label class="option-label">LLM Model</label>
@@ -83,22 +76,6 @@ REQ-003: Users shall be able to reset their password via email link..."></textar
               <option value="meta-llama/llama-4-scout-17b-16e-instruct">Llama 4 Scout 17B (Preview)</option>
               <option value="meta-llama/llama-4-maverick-17b-128e-instruct">Llama 4 Maverick 17B (Preview)</option>
               <option value="qwen/qwen-3-32b">Qwen 3 32B (Preview)</option>
-            </select>
-          </div>
-          <div class="option-item">
-            <label class="option-label">Temperature</label>
-            <input type="range" id="tempRange" min="0" max="10" value="3" class="styled-range"
-              oninput="document.getElementById('tempVal').textContent = (this.value/10).toFixed(1)" />
-            <span class="range-val" id="tempVal">0.3</span>
-          </div>
-          <div class="option-item">
-            <label class="option-label">Output Language</label>
-            <select id="langSelect" class="styled-select">
-              <option value="English" selected>English</option>
-              <option value="Spanish">Spanish</option>
-              <option value="French">French</option>
-              <option value="German">German</option>
-              <option value="Japanese">Japanese</option>
             </select>
           </div>
         </div>
@@ -125,10 +102,8 @@ REQ-003: Users shall be able to reset their password via email link..."></textar
       </div>
     </div>
 
-    <!-- ══════════ RESULTS TAB ══════════ -->
+    <!-- RESULTS TAB -->
     <div id="tab-results" class="tab-pane" style="display:none">
-
-      <!-- Empty state -->
       <div id="emptyResults" class="empty-state">
         <div class="empty-icon">◈</div>
         <div class="empty-title">No test cases yet</div>
@@ -136,24 +111,17 @@ REQ-003: Users shall be able to reset their password via email link..."></textar
         <button class="go-input-btn" onclick="switchTab('input')">← Go to Input</button>
       </div>
 
-      <!-- Results content -->
       <div id="resultsContent" style="display:none">
-
-        <!-- Stats -->
         <div class="stats-row" id="statsRow"></div>
-
-        <!-- Requirements chips -->
         <div id="reqsCard" class="card" style="display:none">
           <div class="card-label">📌 Extracted Requirements</div>
           <div class="reqs-chips" id="reqsChips"></div>
         </div>
 
-        <!-- Controls -->
         <div class="results-controls">
           <div class="search-wrap">
             <span class="search-icon">🔍</span>
-            <input type="text" id="searchInput" class="search-input" placeholder="Search test cases…"
-              oninput="applyFilters()" />
+            <input type="text" id="searchInput" class="search-input" placeholder="Search test cases…" oninput="applyFilters()">
           </div>
           <select id="filterType" class="styled-select" onchange="applyFilters()">
             <option value="All">All Types</option>
@@ -176,7 +144,6 @@ REQ-003: Users shall be able to reset their password via email link..."></textar
           <button class="export-btn md-btn" onclick="exportMarkdown()">⬇ Markdown</button>
         </div>
 
-        <!-- Table -->
         <div class="table-scroll">
           <table id="testTable" class="test-table">
             <thead>
@@ -190,7 +157,6 @@ REQ-003: Users shall be able to reset their password via email link..."></textar
           </table>
         </div>
 
-        <!-- Expand panel -->
         <div id="expandPanel" class="expand-panel" style="display:none">
           <div class="expand-header">
             <span id="expandTitle"></span>
@@ -207,9 +173,7 @@ REQ-003: Users shall be able to reset their password via email link..."></textar
             </div>
           </div>
           <div class="expand-footer">
-            <div>
-              <span class="expand-meta" id="expandReq"></span>
-            </div>
+            <div><span class="expand-meta" id="expandReq"></span></div>
             <button class="del-btn" id="expandDelBtn">🗑 Remove Case</button>
           </div>
         </div>
@@ -219,9 +183,7 @@ REQ-003: Users shall be able to reset their password via email link..."></textar
         </div>
       </div>
     </div>
-
-  </div><!-- /app-wrapper -->
-
+  </div>
   <script src="app.js"></script>
 </body>
 </html>
